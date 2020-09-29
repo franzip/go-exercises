@@ -1,52 +1,50 @@
 package main
 
-import "fmt"
-
-var cypherKey = []rune("BACKENDARCHITECTURE")
-
-var cypherLength int = len(cypherKey)
+import (
+	"fmt"
+)
 
 func isEncryptable(char rune) bool {
 	return char >= 65 && char <= 90
 }
 
-func encryptMessage(message string) (encrypted string) {
-	var sum rune
+func (c *Cipher) shift(message string, forward bool) (result string) {
+	var keyIdx int = 0
 	var charToRune rune
-	var cypherIdx int = 0
-	for i := 0; i < len(message); i++ {
-		charToRune = rune(message[i])
+
+	for _, char := range message {
+		charToRune = rune(char)
 		if isEncryptable(charToRune) {
-			sum = charToRune + cypherKey[cypherIdx%cypherLength]
-			cypherIdx += 1
-			encrypted += string((sum+26)%26 + 'A')
-		} else {
-			encrypted += string(message[i])
+			if forward {
+				charToRune = ((charToRune + c.key[keyIdx%len(c.key)] + 26) % 26) + 'A'
+			} else {
+				charToRune = ((charToRune - c.key[keyIdx%len(c.key)] + 26) % 26) + 'A'
+			}
+			keyIdx += 1
 		}
+
+		result += string(charToRune)
 	}
 	return
 }
 
-func decryptMessage(message string) (decrypted string) {
-	var sum rune
-	var charToRune rune
-	var cypherIdx int = 0
-	for i := 0; i < len(message); i++ {
-		charToRune = rune(message[i])
-		if isEncryptable(charToRune) {
-			sum = (charToRune - cypherKey[cypherIdx%cypherLength])
-			cypherIdx += 1
-			decrypted += string((sum+26)%26 + 'A')
-		} else {
-			decrypted += string(message[i])
-		}
-	}
-	return
+func (c *Cipher) EncryptMessage(message string) (encrypted string) {
+	return c.shift(message, true)
+}
+
+func (c *Cipher) DecryptMessage(message string) (decrypted string) {
+	return c.shift(message, false)
+}
+
+type Cipher struct {
+	key []rune
 }
 
 func main() {
-	enc := encryptMessage("JOHN DOE IS A VERY STUPID GUY")
+	key := []rune("BACKENDARCHITECTURE")
+	cipher := Cipher{key: key}
+	enc := cipher.EncryptMessage("OWNED BY JOHN DOE")
 	fmt.Println(enc)
-	fmt.Println(decryptMessage(enc))
-	fmt.Println(decryptMessage("HO KC EJHSFOL, IGH TXUCPZ FWX XB SLRA DQML"))
+	fmt.Println(cipher.DecryptMessage(enc))
+	fmt.Println(cipher.DecryptMessage("HO KC EJHSFOL, IGH TXUCPZ FWX XB SLRA DQML"))
 }
