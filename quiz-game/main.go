@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"time"
 )
 
 type Question struct {
@@ -41,20 +42,11 @@ func printResults(correctAnswers int, totalQuestions int) {
 	fmt.Printf("Number of correct answers: %d/%d", correctAnswers, totalQuestions)
 }
 
-func runQuiz(questions []Question) {
+func askQuestion(questionIdx int, question Question, answerCh chan string) {
+	fmt.Printf("Problem #%d: %s = ", questionIdx+1, question.question)
 	var answer string
-	correctAnswers := 0
-
-	for idx, question := range questions {
-		fmt.Printf("Question number %d: %s \n", idx+1, question.question)
-		fmt.Printf("Your answer: ")
-		fmt.Scanln(&answer)
-		if question.isValidAnswer(answer) {
-			correctAnswers += 1
-		}
-	}
-
-	printResults(correctAnswers, len(questions))
+	fmt.Scanln(&answer)
+	answerCh <- answer
 }
 
 var fileName string
@@ -74,16 +66,24 @@ func main() {
 	defer f.Close()
 
 	r := csv.NewReader(f)
+	questions := readQuestions(r)
+	correct := 0
+	timer := time.NewTimer(time.Duration(timeLimit) * time.Second)
 
-	var questions []Question = readQuestions(r)
-
-	fmt.Println("Welcome to the simplest quiz game ever. Press enter to start")
-
-	fmt.Scanln()
-
-	if err != nil {
-		log.Fatal("An error occurred reading user input: ", err)
+quizGame:
+	for i, question := range questions {
+		answerCh := make(chan string)
+		go askQuestion(i, question, answerCh)
+		select {
+		case <-timer.C:
+			fmt.Println("Time out!")
+			break quizGame
+		case answer := <-answerCh:
+			if answer == question.answer {
+				correct += 1
+			}
+		}
 	}
 
-	runQuiz(questions)
+	printResults(correct, len(questions))
 }
